@@ -1,20 +1,11 @@
 package com.example.onetimepassword.service;
 
-import dev.samstevens.totp.code.*;
-import dev.samstevens.totp.exceptions.QrGenerationException;
-import dev.samstevens.totp.qr.QrData;
-import dev.samstevens.totp.qr.QrDataFactory;
-import dev.samstevens.totp.qr.QrGenerator;
-import dev.samstevens.totp.qr.ZxingPngQrGenerator;
-import dev.samstevens.totp.secret.DefaultSecretGenerator;
-import dev.samstevens.totp.secret.SecretGenerator;
-import dev.samstevens.totp.time.NtpTimeProvider;
-import dev.samstevens.totp.time.SystemTimeProvider;
-import dev.samstevens.totp.time.TimeProvider;
+import com.j256.twofactorauth.TimeBasedOneTimePasswordUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import static dev.samstevens.totp.util.Utils.getDataUriForImage;
+
+import java.security.GeneralSecurityException;
 /**
  * Created by pat on 28-Mar-23 - 9:32 AM
  *
@@ -26,47 +17,20 @@ import static dev.samstevens.totp.util.Utils.getDataUriForImage;
 @RequiredArgsConstructor
 public class TotpManager {
     public String generateSecret() {
-        SecretGenerator generator = new DefaultSecretGenerator();
-        return generator.generate();
+        return TimeBasedOneTimePasswordUtil.generateBase32Secret();
     }
 
     public String getUriForImage(String secret) {
-        QrData data = new QrData.Builder()
-                .label("OTP-PAT")
-                .secret(secret)
-                .issuer("hello test")
-                .algorithm(HashingAlgorithm.SHA256)
-                .digits(6)
-                .period(30)
-                .build();
-
-        QrGenerator generator = new ZxingPngQrGenerator();
-        byte[] imageData = new byte[0];
-
-        try {
-            imageData = generator.generate(data);
-        } catch (QrGenerationException e) {
-            log.error("unable to generate QrCode");
-        }
-
-        String mimeType = generator.getImageMimeType();
-
-        return getDataUriForImage(imageData, mimeType);
+        String keyId = "username";
+        return TimeBasedOneTimePasswordUtil.qrImageUrl(keyId, secret);
     }
 
-    public boolean verifyCode(String code, String secret) {
-        TimeProvider timeProvider = null;
+    public boolean verifyCode(int code, String secret) {
         try {
-            timeProvider = new NtpTimeProvider("pool.ntp.org", 5000);
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
+            return TimeBasedOneTimePasswordUtil.validateCurrentNumber(secret,code,100000);
+        } catch (GeneralSecurityException e) {
+            e.printStackTrace();
         }
-        CodeGenerator codeGenerator = new DefaultCodeGenerator();
-        DefaultCodeVerifier  verifier = new DefaultCodeVerifier(codeGenerator, timeProvider);
-        System.out.println(timeProvider.getTime());
-        System.out.println(code + " " + secret);
-        verifier.setTimePeriod(60);
-        verifier.setAllowedTimePeriodDiscrepancy(2);
-        return verifier.isValidCode(secret, code);
+        return false;
     }
 }

@@ -27,9 +27,9 @@ public class TotpController {
     }
 
     @PostMapping("/verify")
-    public String verify(@RequestParam String code) {
+    public String verify(@RequestParam int code) {
 //        System.out.println("secret: " + secret);
-        if (totpManager.verifyCode(secret, code)) {
+        if (totpManager.verifyCode(code, secret)) {
             return "CORRECT CODE";
         }
         return "INCORRECT CODE";
